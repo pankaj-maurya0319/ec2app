@@ -2,16 +2,27 @@ version: 0.2
 
 phases:
   install:
-    runtime-versions:
-      nodejs: 18
-    commands:
-      - echo Installing Node.js dependencies...
-      - npm install
-      - echo Installing AWS CLI & SSH tools...
-      - yum install -y unzip openssh-clients
-      - echo Fetching PEM from SSM...
-      - aws ssm get-parameter --name "ec2-ssh-key" --with-decryption --query "Parameter.Value" --output text > /tmp/key.pem
-      - chmod 400 /tmp/key.pem
+  runtime-versions:
+    nodejs: 18
+  commands:
+    - echo Installing Node.js dependencies...
+    - npm install
+    - echo Installing AWS CLI & SSH tools...
+
+    # Check OS and install tools accordingly
+    - |
+      if [ -x "$(command -v apt)" ]; then
+        echo "Using apt (Ubuntu/Debian)"
+        apt-get update && apt-get install -y unzip openssh-client
+      else
+        echo "Using yum (Amazon Linux/CentOS)"
+        yum install -y unzip openssh-clients
+      fi
+
+    - echo Fetching PEM key from SSM...
+    - aws ssm get-parameter --name "ec2-ssh-key" --with-decryption --query "Parameter.Value" --output text > /tmp/key.pem
+    - chmod 400 /tmp/key.pem
+
 
   build:
     commands:
