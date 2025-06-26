@@ -5,25 +5,24 @@ phases:
     runtime-versions:
       nodejs: 18
     commands:
-      - echo Installing Node.js dependencies...
+      - echo "Installing Node.js dependencies..."
       - npm install
-      - echo Detecting and installing SSH & unzip tools...
 
-      # Detect OS and install unzip + openssh-clients
+      - echo "Installing unzip and ssh clients based on OS..."
       - if command -v apt > /dev/null; then apt-get update && apt-get install -y unzip openssh-client; fi
       - if command -v yum > /dev/null; then yum install -y unzip openssh-clients; fi
 
-      - echo Fetching PEM from SSM Parameter Store...
+      - echo "Fetching PEM from Parameter Store..."
       - aws ssm get-parameter --name "ec2-ssh-key" --with-decryption --query "Parameter.Value" --output text > /tmp/key.pem
       - chmod 400 /tmp/key.pem
 
   build:
     commands:
-      - echo Build phase completed.
+      - echo "Build phase complete."
 
   post_build:
     commands:
-      - echo Deploying code to EC2...
+      - echo "Deploying to EC2..."
       - scp -o StrictHostKeyChecking=no -i /tmp/key.pem -r * ec2-user@3.236.87.54:/var/www/ec2app/
-      - echo Restarting app on EC2 via PM2...
-      - ssh -o StrictHostKeyChecking=no -i /tmp/key.pem ec2-user@3.236.87.54 "pm2 restart all || echo 'PM2 not running'"
+      - echo "Restarting Node app via PM2..."
+      - ssh -o StrictHostKeyChecking=no -i /tmp/key.pem ec2-user@3.236.87.54 "pm2 restart all || echo 'PM2 not found'"
