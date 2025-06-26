@@ -7,17 +7,11 @@ phases:
     commands:
       - echo Installing Node.js dependencies...
       - npm install
-      - echo Installing AWS CLI & SSH tools...
+      - echo Detecting and installing SSH & unzip tools...
 
-      # Check which package manager is available (apt or yum)
-      - |
-        if [ -x "$(command -v apt)" ]; then
-          echo "Using apt (Ubuntu/Debian)"
-          apt-get update && apt-get install -y unzip openssh-client
-        else
-          echo "Using yum (Amazon Linux/CentOS)"
-          yum install -y unzip openssh-clients
-        fi
+      # Detect OS and install unzip + openssh-clients
+      - if command -v apt > /dev/null; then apt-get update && apt-get install -y unzip openssh-client; fi
+      - if command -v yum > /dev/null; then yum install -y unzip openssh-clients; fi
 
       - echo Fetching PEM from SSM Parameter Store...
       - aws ssm get-parameter --name "ec2-ssh-key" --with-decryption --query "Parameter.Value" --output text > /tmp/key.pem
@@ -25,11 +19,11 @@ phases:
 
   build:
     commands:
-      - echo Build phase - no build steps required.
+      - echo Build phase completed.
 
   post_build:
     commands:
-      - echo Deploying to EC2...
+      - echo Deploying code to EC2...
       - scp -o StrictHostKeyChecking=no -i /tmp/key.pem -r * ec2-user@3.236.87.54:/var/www/ec2app/
-      - echo Restarting Node.js app using PM2...
-      - ssh -o StrictHostKeyChecking=no -i /tmp/key.pem ec2-user@3.236.87.54 "pm2 restart all || echo 'PM2 not found or app not running'"
+      - echo Restarting app on EC2 via PM2...
+      - ssh -o StrictHostKeyChecking=no -i /tmp/key.pem ec2-user@3.236.87.54 "pm2 restart all || echo 'PM2 not running'"
