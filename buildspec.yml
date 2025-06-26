@@ -5,15 +5,21 @@ phases:
     runtime-versions:
       nodejs: 18
     commands:
-      - echo Installing dependencies...
+      - echo Installing Node.js dependencies...
       - npm install
+      - echo Installing AWS CLI & SSH tools...
+      - yum install -y unzip openssh-clients
+      - echo Fetching PEM from SSM...
+      - aws ssm get-parameter --name "ec2-ssh-key" --with-decryption --query "Parameter.Value" --output text > /tmp/key.pem
+      - chmod 400 /tmp/key.pem
+
   build:
     commands:
-      - echo Build step completed. No actual build for now.
+      - echo Build phase - no build steps required for this app.
+
   post_build:
     commands:
       - echo Deploying to EC2...
-      - scp -o StrictHostKeyChecking=no -i nodeapp.pem -r * ec2-user@3.236.87.54:/var/www/ec2app/
-      - echo Restarting Node.js app...
-      - ssh -o StrictHostKeyChecking=no -i nodeapp.pem ec2-user@3.236.87.54 "pm2 restart all"
-
+      - scp -o StrictHostKeyChecking=no -i /tmp/key.pem -r * ec2-user@3.236.87.54:/var/www/ec2app/
+      - echo Restarting PM2 app on EC2...
+      - ssh -o StrictHostKeyChecking=no -i /tmp/key.pem ec2-user@3.236.87.54 "pm2 restart all || echo 'PM2 not installed or running'"
