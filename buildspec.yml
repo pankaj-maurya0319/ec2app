@@ -1,0 +1,27 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 16
+    commands:
+      - echo Installing dependencies...
+      - npm install
+  build:
+    commands:
+      - echo Build step - nothing to compile for now
+  post_build:
+    commands:
+      - echo Packaging files
+      - zip -r app.zip .
+      - echo Transferring to EC2
+      - |
+        aws ssm send-command \
+          --document-name "AWS-RunShellScript" \
+          --targets "Key=instanceIds,Values=i-02c968ee4c48fd6b4" \
+          --comment "Deploy Node.js App" \
+          --parameters 'commands=["cd /home/ec2-user && rm -rf aws-web-app && unzip /tmp/app.zip && pm2 restart all"]' \
+          --region ap-south-1
+artifacts:
+  files:
+    - app.zip
